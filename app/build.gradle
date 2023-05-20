@@ -22,6 +22,9 @@ dependencies {
 
     // This dependency is used by the application.
     implementation 'com.google.guava:guava:31.1-jre'
+    implementation("com.intuit.quickbooks-online:ipp-v3-java-data:6.0.7")
+    implementation (group: 'com.intuit.quickbooks-online', name: 'ipp-v3-java-devkit', version: '6.0.7', classifier: 'jar-with-dependencies')
+    implementation (group: 'com.intuit.quickbooks-online', name: 'oauth2-platform-api', version: '6.0.7', classifier: 'jar-with-dependencies')
 }
 
 // Apply a specific Java toolchain to ease working on different environments.

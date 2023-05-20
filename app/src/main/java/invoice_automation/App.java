@@ -3,12 +3,27 @@
  */
 package invoice_automation;
 
-public class App {
-    public String getGreeting() {
-        return "Hello World!";
-    }
+import com.google.gson.Gson;
+import com.intuit.ipp.data.Customer;
 
-    public static void main(String[] args) {
-        System.out.println(new App().getGreeting());
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.util.List;
+
+public class App {
+    private static final String O_AUTH_KEYS_PATH = "app/src/main/resources/oauth_keys.json";
+
+    public static void main(String[] args) throws FileNotFoundException {
+        Gson gson = new Gson();
+        OAuthKeys oAuthKeys = gson.fromJson(new FileReader(O_AUTH_KEYS_PATH), OAuthKeys.class);
+        QuickBooksModule quickBooksModule = new QuickBooksModule(
+                oAuthKeys.accessToken,
+                oAuthKeys.realmId,
+                true
+        );
+        List<Customer> customers = quickBooksModule.getAllCustomers();
+        for (Customer c: customers) {
+            System.out.println(c.getDisplayName());
+        }
     }
 }
