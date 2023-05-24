@@ -1,11 +1,14 @@
 package invoice_automation;
 
+import lombok.Value;
+
 /**
  * A class used to hold OAuthKeys
  *
  * @author skberkeley
  */
+@Value
 public class OAuthKeys {
-    public String realmId;
-    public String accessToken;
+    String realmId;
+    String accessToken;
 }
