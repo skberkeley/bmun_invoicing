@@ -9,6 +9,9 @@
 plugins {
     // Apply the application plugin to add support for building a CLI application in Java.
     id 'application'
+
+    // Lombok plugin
+    id "io.freefair.lombok" version "8.0.1"
 }
 
 repositories {
@@ -19,10 +22,12 @@ repositories {
 dependencies {
     // Use JUnit test framework.
     testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.powermock:powermock-module-junit4:2.0.2'
+    testImplementation 'org.powermock:powermock-api-mockito2:2.0.2'
 
     // This dependency is used by the application.
     implementation 'com.google.guava:guava:31.1-jre'
-    implementation("com.intuit.quickbooks-online:ipp-v3-java-data:6.0.7")
+    implementation('com.intuit.quickbooks-online:ipp-v3-java-data:6.0.7')
     implementation (group: 'com.intuit.quickbooks-online', name: 'ipp-v3-java-devkit', version: '6.0.7', classifier: 'jar-with-dependencies')
     implementation (group: 'com.intuit.quickbooks-online', name: 'oauth2-platform-api', version: '6.0.7', classifier: 'jar-with-dependencies')
 }
@@ -30,7 +35,7 @@ dependencies {
 // Apply a specific Java toolchain to ease working on different environments.
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
+        languageVersion = JavaLanguageVersion.of(15)
     }
 }
 

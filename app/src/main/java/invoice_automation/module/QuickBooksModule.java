@@ -1,14 +1,24 @@
-package invoice_automation;
+package invoice_automation.module;
 
 import com.intuit.ipp.core.Context;
 import com.intuit.ipp.core.ServiceType;
 import com.intuit.ipp.data.Customer;
+import com.intuit.ipp.data.Invoice;
 import com.intuit.ipp.exception.FMSException;
 import com.intuit.ipp.security.OAuth2Authorizer;
 import com.intuit.ipp.services.DataService;
 import com.intuit.ipp.util.Config;
+import invoice_automation.QuickBooksException;
+import invoice_automation.model.InvoiceType;
+import invoice_automation.model.Registration;
+import invoice_automation.model.School;
+import lombok.Builder;
+import lombok.NonNull;
 
 import java.util.List;
+import java.util.Map;
+
+import static invoice_automation.Consts.SANDBOX_BASE_URL;
 
 /**
  * Abstraction barrier for calling QuickBooks APIs
@@ -16,10 +26,6 @@ import java.util.List;
  * @author skberkeley
  */
 public class QuickBooksModule {
-    /**
-     * The base URL to use for API calls when in Sandbox mode
-     */
-    private static final String SANDBOX_BASE_URL = "https://sandbox-quickbooks.api.intuit.com/v3/company";
     /**
      * The DataService object used to make QuickBooks API calls
      */
@@ -31,8 +37,10 @@ public class QuickBooksModule {
      * realmId must be a valid value for some QuickBooks app.
      * @param accessToken The OAuth2 accessToken used to authenticate while instantiating the new DataService object
      * @param realmId The realmId for the QuickBooks app being used
+     * @param useSandbox Whether API calls should be made to the sandbox endpoint (for testing)
      */
-    public QuickBooksModule(String accessToken, String realmId, boolean useSandbox) {
+    @Builder
+    public QuickBooksModule(@NonNull String accessToken, @NonNull String realmId, boolean useSandbox) {
         if (useSandbox) {
             Config.setProperty(Config.BASE_URL_QBO, SANDBOX_BASE_URL);
         }
@@ -52,6 +60,12 @@ public class QuickBooksModule {
         this.dataService = new DataService(context);
     }
 
+    // Customer methods
+
+    /**
+     * Get a list of all existing customers through the QuickBooks API
+     * @return A list of all existing customers
+     */
     public List<Customer> getAllCustomers() {
         Customer customer = new Customer();
         try {
@@ -60,4 +74,36 @@ public class QuickBooksModule {
             throw new QuickBooksException("Exception getting all customers", e);
         }
     }
+
+    /**
+     * Updates the corresponding QuickBooks Customer and returns a copy of that object. If no corresponding Customer
+     * exists, then a new one is created.
+     * @return A copy of the Customer updated or created
+     */
+    public Customer updateCustomerFromSchool(@NonNull School school) {
+        // TODO: IA-7
+        return null;
+    }
+
+    // Invoice methods
+
+    /**
+     * Get all the invoices corresponding to the passed registration through the QuickBooks API. If any required
+     * invoices don't exist yet, create them, also through the QuickBooks API.
+     * @param registration The Registration to match invoices against
+     * @return A map from InvoiceType to the corresponding Invoice. May be empty if no matching invoices exist
+     */
+    public Map<InvoiceType, Invoice> getOrCreateInvoicesFromRegistration(@NonNull Registration registration) {
+        // TODO: IA-8
+        return null;
+    }
+
+    /**
+     * Sends the passed invoice, using the email of the associated Customer.
+     * @param invoice The Invoice to send
+     */
+    public void sendInvoice(@NonNull Invoice invoice) {
+        // TODO: IA-9
+    }
+
 }
