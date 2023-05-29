@@ -2,6 +2,9 @@ package invoice_automation.module;
 
 import com.intuit.ipp.core.Context;
 import com.intuit.ipp.data.Customer;
+import com.intuit.ipp.data.EmailAddress;
+import com.intuit.ipp.data.EmailStatusEnum;
+import com.intuit.ipp.data.Invoice;
 import com.intuit.ipp.exception.FMSException;
 import com.intuit.ipp.services.DataService;
 import com.intuit.ipp.util.Config;
@@ -31,7 +34,9 @@ public class QuickBooksModuleTest {
     private DataService dataService;
     @Mock
     private List<Customer> customerList;
-
+    @Mock
+    private EmailAddress billEmail;
+    private Invoice invoice;
     private QuickBooksModule quickBooksModule;
 
     @Test
@@ -75,6 +80,11 @@ public class QuickBooksModuleTest {
         quickBooksModule = new QuickBooksModule(ACCESS_TOKEN, REALM_ID, false);
     }
 
+    private void setupInvoiceTests() {
+        invoice = new Invoice();
+        invoice.setBillEmail(billEmail);
+    }
+
     @Test
     public void testGetAllCustomers_happyPath() throws Exception {
         // Setup
@@ -96,5 +106,29 @@ public class QuickBooksModuleTest {
 
         // Run
         quickBooksModule.getAllCustomers();
+    }
+
+    @Test
+    public void sendInvoice_happyPath() throws Exception {
+        // Setup
+        setupMethodTests();
+        setupInvoiceTests();
+
+        // Run
+        quickBooksModule.sendInvoice(invoice);
+
+        // Verify
+        assertEquals(EmailStatusEnum.EMAIL_SENT, invoice.getEmailStatus());
+    }
+
+    @Test(expected = QuickBooksException.class)
+    public void sendInvoice_dataServiceThrows() throws Exception {
+        // Setup
+        setupMethodTests();
+        setupInvoiceTests();
+        when(dataService.sendEmail(any(), any())).thenThrow(FMSException.class);
+
+        // Run
+        quickBooksModule.sendInvoice(invoice);
     }
 }
