@@ -3,6 +3,7 @@ package invoice_automation.module;
 import com.intuit.ipp.core.Context;
 import com.intuit.ipp.core.ServiceType;
 import com.intuit.ipp.data.Customer;
+import com.intuit.ipp.data.EmailStatusEnum;
 import com.intuit.ipp.data.Invoice;
 import com.intuit.ipp.exception.FMSException;
 import com.intuit.ipp.security.OAuth2Authorizer;
@@ -103,7 +104,12 @@ public class QuickBooksModule {
      * @param invoice The Invoice to send
      */
     public void sendInvoice(@NonNull Invoice invoice) {
-        // TODO: IA-9
+        try {
+            this.dataService.sendEmail(invoice, invoice.getBillEmail().getAddress());
+        } catch (FMSException e) {
+            throw new QuickBooksException("Exception sending invoice", e);
+        }
+        invoice.setEmailStatus(EmailStatusEnum.EMAIL_SENT);
     }
 
 }
