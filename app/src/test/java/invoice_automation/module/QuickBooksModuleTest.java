@@ -29,6 +29,7 @@ import static org.powermock.api.mockito.PowerMockito.*;
 public class QuickBooksModuleTest {
     private static final String ACCESS_TOKEN = "access token";
     private static final String REALM_ID = "realm id";
+    private static final String EMAIL_ADDRESS = "oski@berkeley.edu";
 
     @Mock
     private DataService dataService;
@@ -113,11 +114,13 @@ public class QuickBooksModuleTest {
         // Setup
         setupMethodTests();
         setupInvoiceTests();
+        when(billEmail.getAddress()).thenReturn(EMAIL_ADDRESS);
 
         // Run
         quickBooksModule.sendInvoice(invoice);
 
         // Verify
+        Mockito.verify(dataService).sendEmail(invoice, EMAIL_ADDRESS);
         assertEquals(EmailStatusEnum.EMAIL_SENT, invoice.getEmailStatus());
     }
 
