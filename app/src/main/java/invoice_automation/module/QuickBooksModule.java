@@ -8,6 +8,7 @@ import com.intuit.ipp.data.Invoice;
 import com.intuit.ipp.exception.FMSException;
 import com.intuit.ipp.security.OAuth2Authorizer;
 import com.intuit.ipp.services.DataService;
+import com.intuit.ipp.services.QueryResult;
 import com.intuit.ipp.util.Config;
 import invoice_automation.QuickBooksException;
 import invoice_automation.model.InvoiceType;
@@ -110,6 +111,24 @@ public class QuickBooksModule {
             throw new QuickBooksException("Exception sending invoice", e);
         }
         invoice.setEmailStatus(EmailStatusEnum.EMAIL_SENT);
+    }
+
+    /**
+     * Finds and returns the test invoice created in the sandbox company
+     * with the memo "BMUN Testing"
+     * @return invoice The invoice to test sendInvoice's functionality
+     * @throws FMSException
+     */
+    public Invoice getTestInvoice() throws FMSException {
+        List<Invoice> invoices = dataService.findAll(new Invoice());
+        Invoice invoice = new Invoice();
+        for (Invoice inv : invoices) {
+            String memo = inv.getCustomerMemo().getValue();
+            if (memo.equals("BMUN Test")) {
+                invoice = inv;
+            }
+        }
+        return invoice;
     }
 
 }
