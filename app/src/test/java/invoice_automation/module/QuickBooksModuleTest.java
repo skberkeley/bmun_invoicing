@@ -22,6 +22,7 @@ import static invoice_automation.Consts.SANDBOX_BASE_URL;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verify;
 import static org.powermock.api.mockito.PowerMockito.*;
 
 @RunWith(PowerMockRunner.class)
@@ -122,6 +123,7 @@ public class QuickBooksModuleTest {
         // Verify
         Mockito.verify(dataService).sendEmail(invoice, EMAIL_ADDRESS);
         assertEquals(EmailStatusEnum.EMAIL_SENT, invoice.getEmailStatus());
+        verify(dataService).sendEmail(invoice, billEmail.getAddress());
     }
 
     @Test(expected = QuickBooksException.class)
