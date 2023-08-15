@@ -5,10 +5,10 @@ import com.intuit.ipp.core.ServiceType;
 import com.intuit.ipp.data.Customer;
 import com.intuit.ipp.data.EmailStatusEnum;
 import com.intuit.ipp.data.Invoice;
+import com.intuit.ipp.data.MemoRef;
 import com.intuit.ipp.exception.FMSException;
 import com.intuit.ipp.security.OAuth2Authorizer;
 import com.intuit.ipp.services.DataService;
-import com.intuit.ipp.services.QueryResult;
 import com.intuit.ipp.util.Config;
 import invoice_automation.QuickBooksException;
 import invoice_automation.model.InvoiceType;
@@ -114,21 +114,24 @@ public class QuickBooksModule {
     }
 
     /**
-     * Finds and returns the test invoice created in the sandbox company
-     * with the memo "BMUN Testing"
-     * @return invoice The invoice to test sendInvoice's functionality
-     * @throws FMSException
+     * Finds and returns the first invoice with matching memo
+     * @param memoToMatch - A string containing the memo value to match against
+     * @return invoice - The first invoice with a matching memo value
      */
-    public Invoice getTestInvoice() throws FMSException {
-        List<Invoice> invoices = dataService.findAll(new Invoice());
-        Invoice invoice = new Invoice();
+    public Invoice getInvoiceWithMatchingMemo(String memoToMatch) {
+        List<Invoice> invoices;
+        try {
+            invoices = dataService.findAll(new Invoice());
+        } catch (FMSException e) {
+            throw new QuickBooksException("Error fetching all invoices", e);
+        }
+
         for (Invoice inv : invoices) {
-            String memo = inv.getCustomerMemo().getValue();
-            if (memo.equals("BMUN Test")) {
-                invoice = inv;
+            MemoRef memo = inv.getCustomerMemo();
+            if (memo != null && memo.getValue().equals(memoToMatch)) {
+                return inv;
             }
         }
-        return invoice;
+        return null;
     }
-
 }

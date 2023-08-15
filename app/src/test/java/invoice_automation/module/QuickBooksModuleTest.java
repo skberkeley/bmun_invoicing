@@ -5,6 +5,7 @@ import com.intuit.ipp.data.Customer;
 import com.intuit.ipp.data.EmailAddress;
 import com.intuit.ipp.data.EmailStatusEnum;
 import com.intuit.ipp.data.Invoice;
+import com.intuit.ipp.data.MemoRef;
 import com.intuit.ipp.exception.FMSException;
 import com.intuit.ipp.services.DataService;
 import com.intuit.ipp.util.Config;
@@ -16,10 +17,12 @@ import org.mockito.Mockito;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static invoice_automation.Consts.SANDBOX_BASE_URL;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verify;
@@ -30,6 +33,8 @@ import static org.powermock.api.mockito.PowerMockito.*;
 public class QuickBooksModuleTest {
     private static final String ACCESS_TOKEN = "access token";
     private static final String REALM_ID = "realm id";
+    private static final String EMAIL_ADDRESS = "oski@berkeley.edu";
+    private static final String MEMO = "memo123";
 
     @Mock
     private DataService dataService;
@@ -39,6 +44,7 @@ public class QuickBooksModuleTest {
     private EmailAddress billEmail;
     private Invoice invoice;
     private QuickBooksModule quickBooksModule;
+    private List<Invoice> invoices;
 
     @Test
     public void testQuickBooksModuleConstructor_noSandbox_happyPath() {
@@ -110,21 +116,23 @@ public class QuickBooksModuleTest {
     }
 
     @Test
-    public void sendInvoice_happyPath() throws Exception {
+    public void testSendInvoice_happyPath() throws Exception {
         // Setup
         setupMethodTests();
         setupInvoiceTests();
+        when(billEmail.getAddress()).thenReturn(EMAIL_ADDRESS);
 
         // Run
         quickBooksModule.sendInvoice(invoice);
 
         // Verify
+        Mockito.verify(dataService).sendEmail(invoice, EMAIL_ADDRESS);
         assertEquals(EmailStatusEnum.EMAIL_SENT, invoice.getEmailStatus());
-        verify(dataService).sendEmail(invoice, billEmail.getAddress());
+        verify(dataService).sendEmail(invoice, EMAIL_ADDRESS);
     }
 
     @Test(expected = QuickBooksException.class)
-    public void sendInvoice_dataServiceThrows() throws Exception {
+    public void testSendInvoice_dataServiceThrows() throws Exception {
         // Setup
         setupMethodTests();
         setupInvoiceTests();
@@ -133,4 +141,55 @@ public class QuickBooksModuleTest {
         // Run
         quickBooksModule.sendInvoice(invoice);
     }
+
+    @Test
+    public void testGetInvoiceWithMatchingMemo_happyPath() throws Exception {
+        // Setup
+        setupMethodTests();
+        Invoice nonMatchingInvoice = new Invoice();
+        Invoice matchingInvoice = new Invoice();
+        matchingInvoice.setCustomerMemo(new MemoRef());
+        matchingInvoice.getCustomerMemo().setValue(MEMO);
+        invoices = new ArrayList<>();
+        invoices.add(nonMatchingInvoice);
+        invoices.add(matchingInvoice);
+        when(dataService.findAll(any(Invoice.class))).thenReturn(invoices);
+
+        // Run
+        Invoice returnedInvoice = quickBooksModule.getInvoiceWithMatchingMemo(MEMO);
+
+        // Verify
+        assertEquals(matchingInvoice, returnedInvoice);
+    }
+
+    @Test(expected = QuickBooksException.class)
+    public void testGetInvoiceWithMatchingMemo_dataServiceThrows() throws Exception {
+        // Setup
+        setupMethodTests();
+        when(dataService.findAll(any(Invoice.class))).thenThrow(FMSException.class);
+
+        // Run
+        quickBooksModule.getInvoiceWithMatchingMemo(MEMO);
+    }
+
+    @Test
+    public void testGetInvoiceWithMatchingMemo_noMatchingInvoice() throws Exception {
+        // Setup
+        setupMethodTests();
+        Invoice nonMatchingInvoice = new Invoice();
+        Invoice nonMatchingInvoice1 = new Invoice();
+        nonMatchingInvoice1.setCustomerMemo(new MemoRef());
+        nonMatchingInvoice1.getCustomerMemo().setValue(EMAIL_ADDRESS);
+        invoices = new ArrayList<>();
+        invoices.add(nonMatchingInvoice);
+        invoices.add(nonMatchingInvoice1);
+        when(dataService.findAll(any(Invoice.class))).thenReturn(invoices);
+
+        // Run
+        Invoice returnedInvoice = quickBooksModule.getInvoiceWithMatchingMemo(MEMO);
+
+        // Verify
+        assertNull(returnedInvoice);
+    }
 }
+
