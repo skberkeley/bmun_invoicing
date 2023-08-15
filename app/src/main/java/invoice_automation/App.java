@@ -4,19 +4,14 @@
 package invoice_automation;
 
 import com.google.gson.Gson;
-import com.intuit.ipp.data.Customer;
+import com.intuit.ipp.data.Invoice;
 import invoice_automation.module.QuickBooksModule;
 
 import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.util.List;
 
 public class App {
     private static final String O_AUTH_KEYS_PATH = "app/src/main/resources/oauth_keys.json";
-
-    public String getGreeting() {
-        return "";
-    }
 
     public static void main(String[] args) throws FileNotFoundException {
         Gson gson = new Gson();
@@ -26,9 +21,8 @@ public class App {
                 oAuthKeys.getRealmId(),
                 true
         );
-        List<Customer> customers = quickBooksModule.getAllCustomers();
-        for (Customer c: customers) {
-            System.out.println(c.getDisplayName());
-        }
+
+        Invoice invoice = quickBooksModule.getInvoiceWithMatchingMemo("BMUN Test");
+        quickBooksModule.sendInvoice(invoice);
     }
 }

@@ -3,7 +3,9 @@ package invoice_automation.module;
 import com.intuit.ipp.core.Context;
 import com.intuit.ipp.core.ServiceType;
 import com.intuit.ipp.data.Customer;
+import com.intuit.ipp.data.EmailStatusEnum;
 import com.intuit.ipp.data.Invoice;
+import com.intuit.ipp.data.MemoRef;
 import com.intuit.ipp.exception.FMSException;
 import com.intuit.ipp.security.OAuth2Authorizer;
 import com.intuit.ipp.services.DataService;
@@ -103,7 +105,33 @@ public class QuickBooksModule {
      * @param invoice The Invoice to send
      */
     public void sendInvoice(@NonNull Invoice invoice) {
-        // TODO: IA-9
+        try {
+            this.dataService.sendEmail(invoice, invoice.getBillEmail().getAddress());
+        } catch (FMSException e) {
+            throw new QuickBooksException("Exception sending invoice", e);
+        }
+        invoice.setEmailStatus(EmailStatusEnum.EMAIL_SENT);
     }
 
+    /**
+     * Finds and returns the first invoice with matching memo
+     * @param memoToMatch - A string containing the memo value to match against
+     * @return invoice - The first invoice with a matching memo value
+     */
+    public Invoice getInvoiceWithMatchingMemo(String memoToMatch) {
+        List<Invoice> invoices;
+        try {
+            invoices = dataService.findAll(new Invoice());
+        } catch (FMSException e) {
+            throw new QuickBooksException("Error fetching all invoices", e);
+        }
+
+        for (Invoice inv : invoices) {
+            MemoRef memo = inv.getCustomerMemo();
+            if (memo != null && memo.getValue().equals(memoToMatch)) {
+                return inv;
+            }
+        }
+        return null;
+    }
 }
