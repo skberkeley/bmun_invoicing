@@ -4,25 +4,17 @@
 package invoice_automation;
 
 import com.google.gson.Gson;
-import com.intuit.ipp.data.Customer;
 import com.intuit.ipp.data.Invoice;
-import com.intuit.ipp.data.ReferenceType;
-import com.intuit.ipp.exception.FMSException;
-import com.intuit.ipp.services.DataService;
-import com.intuit.ipp.services.QueryResult;
+import invoice_automation.model.Address;
+import invoice_automation.model.School;
 import invoice_automation.module.QuickBooksModule;
 
 import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.util.List;
+import java.util.ArrayList;
 
 public class App {
     private static final String O_AUTH_KEYS_PATH = "app/src/main/resources/oauth_keys.json";
-    public DataService dataService;
-
-    public String getGreeting() {
-        return "";
-    }
 
     public static void main(String[] args) throws FileNotFoundException {
         Gson gson = new Gson();
@@ -32,15 +24,21 @@ public class App {
                 oAuthKeys.getRealmId(),
                 true
         );
-        List<Customer> customers = quickBooksModule.getAllCustomers();
-        for (Customer c: customers) {
-            System.out.println(c.getDisplayName());
-        }
-        try {
-            Invoice invoice = quickBooksModule.getTestInvoice();
-            quickBooksModule.sendInvoice(invoice);
-        } catch (FMSException e) {
-            throw new RuntimeException(e);
-        }
+
+        School school = School.builder()
+                .schoolName("Berkeley")
+                .email("oski@berkeley.edu")
+                .quickBooksId("Id")
+                .address(new Address("110 Sproul Hall",
+                        "",
+                        "Berkeley",
+                        "CA",
+                        "US",
+                        "94720"))
+                .phoneNumbers(new ArrayList<>())
+                .build();
+        quickBooksModule.updateCustomerFromSchool(school);
+        Invoice invoice = quickBooksModule.getInvoiceWithMatchingMemo("BMUN Test");
+        quickBooksModule.sendInvoice(invoice);
     }
 }

@@ -2,18 +2,16 @@ package invoice_automation.module;
 
 import com.intuit.ipp.core.Context;
 import com.intuit.ipp.core.ServiceType;
-import com.intuit.ipp.data.Customer;
-import com.intuit.ipp.data.EmailStatusEnum;
-import com.intuit.ipp.data.Invoice;
+import com.intuit.ipp.data.*;
 import com.intuit.ipp.exception.FMSException;
 import com.intuit.ipp.security.OAuth2Authorizer;
 import com.intuit.ipp.services.DataService;
-import com.intuit.ipp.services.QueryResult;
 import com.intuit.ipp.util.Config;
 import invoice_automation.QuickBooksException;
 import invoice_automation.model.InvoiceType;
 import invoice_automation.model.Registration;
 import invoice_automation.model.School;
+import invoice_automation.utils.QuickBooksUtils;
 import lombok.Builder;
 import lombok.NonNull;
 
@@ -83,8 +81,34 @@ public class QuickBooksModule {
      * @return A copy of the Customer updated or created
      */
     public Customer updateCustomerFromSchool(@NonNull School school) {
-        // TODO: IA-7
-        return null;
+        boolean addNew = true;
+        // Get customer associated with the school, if it exists
+        Customer schoolCustomer = new Customer();
+        List<Customer> customers = getAllCustomers();
+        for (Customer c: customers) {
+            if (c.getDisplayName().equals(school.getSchoolName())) {
+                schoolCustomer = c;
+                addNew = false;
+                break;
+            }
+        }
+        // Convert the school object to a customer object
+        Customer newCustomer = QuickBooksUtils.getCustomerFromSchool(school);
+        if (!addNew) {
+            newCustomer.setId(schoolCustomer.getId());
+            newCustomer.setSyncToken(schoolCustomer.getSyncToken());
+        }
+        // Add newCustomer or update the existing customer
+        try {
+            if (addNew) {
+                dataService.add(newCustomer);
+            } else {
+                dataService.update(newCustomer);
+            }
+        } catch (FMSException e) {
+            throw new QuickBooksException("Exception updating customer", e);
+        }
+        return newCustomer;
     }
 
     // Invoice methods
@@ -114,21 +138,24 @@ public class QuickBooksModule {
     }
 
     /**
-     * Finds and returns the test invoice created in the sandbox company
-     * with the memo "BMUN Testing"
-     * @return invoice The invoice to test sendInvoice's functionality
-     * @throws FMSException
+     * Finds and returns the first invoice with matching memo
+     * @param memoToMatch - A string containing the memo value to match against
+     * @return invoice - The first invoice with a matching memo value
      */
-    public Invoice getTestInvoice() throws FMSException {
-        List<Invoice> invoices = dataService.findAll(new Invoice());
-        Invoice invoice = new Invoice();
+    public Invoice getInvoiceWithMatchingMemo(String memoToMatch) {
+        List<Invoice> invoices;
+        try {
+            invoices = dataService.findAll(new Invoice());
+        } catch (FMSException e) {
+            throw new QuickBooksException("Error fetching all invoices", e);
+        }
+
         for (Invoice inv : invoices) {
-            String memo = inv.getCustomerMemo().getValue();
-            if (memo.equals("BMUN Test")) {
-                invoice = inv;
+            MemoRef memo = inv.getCustomerMemo();
+            if (memo != null && memo.getValue().equals(memoToMatch)) {
+                return inv;
             }
         }
-        return invoice;
+        return null;
     }
-
 }
