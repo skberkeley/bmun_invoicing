@@ -21,6 +21,7 @@ import invoice_automation.model.PaymentMethod;
 import invoice_automation.model.Registration;
 import invoice_automation.model.RegistrationRound;
 import invoice_automation.model.School;
+import invoice_automation.utils.QuickBooksUtils;
 import lombok.Builder;
 import lombok.NonNull;
 
@@ -95,8 +96,34 @@ public class QuickBooksModule {
      * @return A copy of the Customer updated or created
      */
     public Customer updateCustomerFromSchool(@NonNull School school) {
-        // TODO: IA-7
-        return null;
+        boolean addNew = true;
+        // Get customer associated with the school, if it exists
+        Customer schoolCustomer = new Customer();
+        List<Customer> customers = getAllCustomers();
+        for (Customer c: customers) {
+            if (c.getDisplayName().equals(school.getSchoolName())) {
+                schoolCustomer = c;
+                addNew = false;
+                break;
+            }
+        }
+        // Convert the school object to a customer object
+        Customer newCustomer = QuickBooksUtils.getCustomerFromSchool(school);
+        if (!addNew) {
+            newCustomer.setId(schoolCustomer.getId());
+            newCustomer.setSyncToken(schoolCustomer.getSyncToken());
+        }
+        // Add newCustomer or update the existing customer
+        try {
+            if (addNew) {
+                dataService.add(newCustomer);
+            } else {
+                dataService.update(newCustomer);
+            }
+        } catch (FMSException e) {
+            throw new QuickBooksException("Exception updating customer", e);
+        }
+        return newCustomer;
     }
 
     /**

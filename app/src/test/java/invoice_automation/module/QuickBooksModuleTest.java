@@ -237,6 +237,31 @@ public class QuickBooksModuleTest {
     }
 
     @Test
+    public void testUpdateCustomerFromSchool_happyPath() throws Exception {
+        // Setup
+        setupMethodTests();
+        setupSchool();
+
+        // Run
+        Customer returnedCustomer = quickBooksModule.updateCustomerFromSchool(school);
+
+        // Verify
+        assertEquals(school.getSchoolName(), returnedCustomer.getDisplayName());
+        verify(dataService).add(returnedCustomer);
+    }
+
+    @Test(expected = QuickBooksException.class)
+    public void testUpdateCustomerFromSchool_dataServiceThrows() throws Exception {
+        // Setup
+        setupMethodTests();
+        setupSchool();
+        when(dataService.add(any())).thenThrow((FMSException.class));
+
+        // Run
+        quickBooksModule.updateCustomerFromSchool(school);
+    }
+
+    @Test
     public void testQueryInvoicesFromRegistration_happyPath() throws Exception {
         // Setup
         // dataservice returns a list of customers, one of which matches the school
