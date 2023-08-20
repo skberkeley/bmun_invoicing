@@ -28,8 +28,4 @@ public class School {
      * School's mailing address
      */
     @NonNull Address address;
-    /**
-     * ID of QuickBooks customer corresponding to this school
-     */
-    @Nullable String quickBooksId;
 }
