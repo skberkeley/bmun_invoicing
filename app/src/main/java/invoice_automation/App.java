@@ -24,7 +24,6 @@ public class App {
                 oAuthKeys.getRealmId(),
                 true
         );
-
         School school = School.builder()
                 .schoolName("Berkeley")
                 .email("oski@berkeley.edu")
