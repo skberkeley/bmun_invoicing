@@ -11,14 +11,17 @@ import com.intuit.ipp.security.OAuth2Authorizer;
 import com.intuit.ipp.services.DataService;
 import com.intuit.ipp.util.Config;
 import invoice_automation.QuickBooksException;
+import invoice_automation.Util;
 import invoice_automation.model.InvoiceType;
 import invoice_automation.model.Registration;
 import invoice_automation.model.School;
 import lombok.Builder;
 import lombok.NonNull;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import static invoice_automation.Consts.SANDBOX_BASE_URL;
 
@@ -87,17 +90,69 @@ public class QuickBooksModule {
         return null;
     }
 
+    /**
+     * Gets the corresponding QuickBooks Customer, by matching the school name and the Customer's display name. If no
+     * matching Customer exists, returns null.
+     * @param school - The school to match against using the school's name
+     * @return - The matching Customer object
+     */
+    private Customer getCustomerFromSchool(@NonNull School school) {
+        return this.getAllCustomers().stream()
+                .filter(
+                        c -> {
+                            if (c.getDisplayName() == null) {
+                                return false;
+                            }
+                            return c.getDisplayName().equals(school.getSchoolName());
+                        }
+                )
+                .findFirst().orElse(null);
+    }
+
     // Invoice methods
 
     /**
-     * Get all the invoices corresponding to the passed registration through the QuickBooks API. If any required
-     * invoices don't exist yet, create them, also through the QuickBooks API.
+     * Get all the invoices corresponding to the passed registration through the QuickBooks API. An invoice matches if:
+     * - The Invoice's Customer field matches the Registration's School
+     * - The Invoice's line items correspond to the Registration's Conference
+     * If matching invoices exist, we expect two, one for the school fee and another for delegate fees.
+     * If no matching invoices exist, returns an empty map.
      * @param registration The Registration to match invoices against
      * @return A map from InvoiceType to the corresponding Invoice. May be empty if no matching invoices exist
      */
-    public Map<InvoiceType, Invoice> getOrCreateInvoicesFromRegistration(@NonNull Registration registration) {
-        // TODO: IA-8
-        return null;
+    public Map<InvoiceType, Invoice> queryInvoicesFromRegistration(@NonNull Registration registration) {
+        // Get Customer to match against
+        Customer customer = this.getCustomerFromSchool(registration.getSchool());
+        if (customer == null) {
+            // If no matching customer exists, then no matching invoices exist
+            return Map.of();
+        }
+
+        // Get all invoices
+        List<Invoice> allInvoices = this.getAllInvoices();
+
+        // If no invoices for the customer, return an empty map
+        if (allInvoices.stream().filter(i -> Util.checkInvoiceMatchesCustomer(i, customer)).findAny().isEmpty()) {
+            return Map.of();
+        }
+
+        // Filter invoices for matching customer
+        Stream<Invoice> matchingInvoices = allInvoices.stream()
+                .filter(i -> Util.checkInvoiceMatchesCustomer(i, customer));
+
+        // Filter for line items, construct map
+        Map<InvoiceType, Invoice> invoiceMap = new HashMap<>();
+        matchingInvoices.forEach(
+                i -> {
+                    // Get invoice type
+                    InvoiceType invoiceType = Util.getInvoiceTypeFromInvoice(i);
+                    // Add to map if not null
+                    if (invoiceType != null) {
+                        invoiceMap.put(invoiceType, i);
+                    }
+                }
+        );
+        return invoiceMap;
     }
 
     /**
@@ -119,12 +174,7 @@ public class QuickBooksModule {
      * @return invoice - The first invoice with a matching memo value
      */
     public Invoice getInvoiceWithMatchingMemo(String memoToMatch) {
-        List<Invoice> invoices;
-        try {
-            invoices = dataService.findAll(new Invoice());
-        } catch (FMSException e) {
-            throw new QuickBooksException("Error fetching all invoices", e);
-        }
+        List<Invoice> invoices = this.getAllInvoices();
 
         for (Invoice inv : invoices) {
             MemoRef memo = inv.getCustomerMemo();
@@ -133,5 +183,20 @@ public class QuickBooksModule {
             }
         }
         return null;
+    }
+
+    /**
+     * Queries for all invoices by calling dataService.findall
+     * @return - A list of all existing invoices
+     */
+    private List<Invoice> getAllInvoices() {
+        List<Invoice> invoices;
+        try {
+            invoices = this.dataService.findAll(new Invoice());
+        } catch (FMSException e) {
+            throw new QuickBooksException("Error fetching all invoices", e);
+        }
+
+        return invoices;
     }
 }
