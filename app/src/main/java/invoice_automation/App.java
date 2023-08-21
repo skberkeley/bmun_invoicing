@@ -5,10 +5,19 @@ package invoice_automation;
 
 import com.google.gson.Gson;
 import com.intuit.ipp.data.Invoice;
+import invoice_automation.model.Address;
+import invoice_automation.model.Conference;
+import invoice_automation.model.InvoiceType;
+import invoice_automation.model.PaymentMethod;
+import invoice_automation.model.Registration;
+import invoice_automation.model.School;
 import invoice_automation.module.QuickBooksModule;
 
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
 
 public class App {
     private static final String O_AUTH_KEYS_PATH = "app/src/main/resources/oauth_keys.json";
@@ -22,7 +31,24 @@ public class App {
                 true
         );
 
-        Invoice invoice = quickBooksModule.getInvoiceWithMatchingMemo("BMUN Test");
-        quickBooksModule.sendInvoice(invoice);
+        Address address = new Address("", "", "", "", "", "");
+
+        School school = School.builder()
+                .schoolName("BMUN")
+                .email("")
+                .phoneNumbers(List.of())
+                .address(address)
+                .build();
+
+        Registration registration = Registration.builder()
+                .school(school)
+                .numDelegates(10)
+                .conference(Conference.FC)
+                .registrationDate(LocalDate.now())
+                .paymentMethod(PaymentMethod.CARD)
+                .build();
+
+        Map<InvoiceType, Invoice> map = quickBooksModule.queryInvoicesFromRegistration(registration);
+        System.out.println(map);
     }
 }

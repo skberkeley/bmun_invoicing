@@ -19,7 +19,7 @@ public enum Conference {
     FC {
         @Override
         public String toString() {
-            return "Fall Conference";
+            return String.format("FC %d", Consts.FC_NO);
         }
     },
     TEST {

@@ -1,5 +1,6 @@
 package invoice_automation.model;
 
+import lombok.Builder;
 import lombok.NonNull;
 import lombok.Value;
 
@@ -11,6 +12,7 @@ import java.time.LocalDate;
  * @author skberkeley
  */
 @Value
+@Builder
 public class Registration {
     @NonNull School school;
     int numDelegates;
@@ -20,4 +22,5 @@ public class Registration {
      * Used to determine which round this registration falls into
      */
     @NonNull LocalDate registrationDate;
+    @NonNull PaymentMethod paymentMethod;
 }
