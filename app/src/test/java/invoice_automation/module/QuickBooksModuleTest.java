@@ -236,25 +236,71 @@ public class QuickBooksModuleTest {
         assertNull(returnedInvoice);
     }
 
+    public Customer getExpectedCustomer() {
+        Customer expectedCustomer = new Customer();
+        expectedCustomer.setCompanyName("Berkeley");
+        expectedCustomer.setDisplayName("Berkeley");
+        expectedCustomer.setPrimaryEmailAddr(new EmailAddress());
+        expectedCustomer.getPrimaryEmailAddr().setAddress("oski@berkeley.edu");
+        PhysicalAddress schoolAddress = new PhysicalAddress();
+        schoolAddress.setLine1("110 Sproul Hall");
+        schoolAddress.setLine2("");
+        schoolAddress.setCity("Berkeley");
+        schoolAddress.setCountrySubDivisionCode("CA");
+        schoolAddress.setCountry("US");
+        schoolAddress.setPostalCode("94720");
+        expectedCustomer.setBillAddr(schoolAddress);
+        expectedCustomer.setShipAddr(schoolAddress);
+        expectedCustomer.setPrimaryPhone(new TelephoneNumber());
+        expectedCustomer.getPrimaryPhone().setFreeFormNumber(phoneNumbers.get(0));
+        expectedCustomer.setAlternatePhone(new TelephoneNumber());
+        expectedCustomer.getAlternatePhone().setFreeFormNumber(phoneNumbers.get(1));
+        return expectedCustomer;
+    }
+
     @Test
-    public void testUpdateCustomerFromSchool_happyPath() throws Exception {
+    public void testUpdateCustomerFromSchool_addCustomer() throws Exception {
         // Setup
         setupMethodTests();
-        setupSchool();
+        Customer expectedCustomer = getExpectedCustomer();
 
         // Run
         Customer returnedCustomer = quickBooksModule.updateCustomerFromSchool(school);
 
         // Verify
-        assertEquals(school.getSchoolName(), returnedCustomer.getDisplayName());
+        assertEquals(expectedCustomer, returnedCustomer);
         verify(dataService).add(returnedCustomer);
+    }
+
+    @Test
+    public void testUpdateCustomerFromSchool_updateCustomer() throws Exception {
+        // Setup
+        setupMethodTests();
+        Customer initialCustomer = new Customer();
+        initialCustomer.setDisplayName("Berkeley");
+        initialCustomer.setSyncToken("12345");
+        initialCustomer.setId("12345");
+        when(dataService.findAll(any(Customer.class))).thenReturn(List.of(initialCustomer));
+
+        Customer expectedCustomer = getExpectedCustomer();
+        expectedCustomer.setSyncToken("12345");
+        expectedCustomer.setId("12345");
+        expectedCustomer.setSparse(true);
+
+        // Run
+        Customer returnedCustomer = quickBooksModule.updateCustomerFromSchool(school);
+
+        // Verify
+        assertEquals(expectedCustomer, returnedCustomer);
+        verify(dataService).update(returnedCustomer);
     }
 
     @Test(expected = QuickBooksException.class)
     public void testUpdateCustomerFromSchool_dataServiceThrows() throws Exception {
         // Setup
         setupMethodTests();
-        setupSchool();
+        // Mocking "add" as the test case will interact with a dataService with
+        // no existing customers and will add a new customer
         when(dataService.add(any())).thenThrow((FMSException.class));
 
         // Run

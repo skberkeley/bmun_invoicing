@@ -7,10 +7,11 @@ import com.intuit.ipp.data.TelephoneNumber;
 import invoice_automation.model.Address;
 import invoice_automation.model.School;
 
+import java.util.List;
+
 public class QuickBooksUtils {
     /**
-     * Basic utility functions to reduce levels of complexity when
-     * working with QuickBooks
+     * Basic utility functions with QuickBooks
      * */
 
 
@@ -23,22 +24,22 @@ public class QuickBooksUtils {
         Customer newCustomer = new Customer();
         newCustomer.setCompanyName(school.getSchoolName());
         newCustomer.setDisplayName(school.getSchoolName());
-        if (!school.getEmail().equals(null)) {
-            newCustomer.setPrimaryEmailAddr(new EmailAddress());
-            newCustomer.getPrimaryEmailAddr().setAddress(school.getEmail());
-        } else { newCustomer.setPrimaryEmailAddr(null); }
-        if (!school.getPhoneNumbers().equals(null)) {
+        newCustomer.setPrimaryEmailAddr(new EmailAddress());
+        newCustomer.getPrimaryEmailAddr().setAddress(school.getEmail());
+        PhysicalAddress schoolAddress = QuickBooksUtils.getPhysicalAddressFromAddress(school.getAddress());
+        newCustomer.setBillAddr(schoolAddress);
+        newCustomer.setShipAddr(schoolAddress);
+        List<String> phoneNumbers = school.getPhoneNumbers();
+        if (!phoneNumbers.isEmpty()) {
             if (school.getPhoneNumbers().size() > 0) {
                 newCustomer.setPrimaryPhone(new TelephoneNumber());
-                newCustomer.getPrimaryPhone().setFreeFormNumber(school.getPhoneNumbers().get(0));
+                newCustomer.getPrimaryPhone().setFreeFormNumber(phoneNumbers.get(0));
             }
             if (school.getPhoneNumbers().size() > 1) {
                 newCustomer.setAlternatePhone(new TelephoneNumber());
-                newCustomer.getAlternatePhone().setFreeFormNumber(school.getPhoneNumbers().get(1));
+                newCustomer.getAlternatePhone().setFreeFormNumber(phoneNumbers.get(1));
             }
         }
-        newCustomer.setBillAddr(QuickBooksUtils.getPhysicalAddressFromAddress(school.getAddress()));
-        newCustomer.setShipAddr(newCustomer.getBillAddr());
         return newCustomer;
     }
 

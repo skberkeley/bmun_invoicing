@@ -96,28 +96,28 @@ public class QuickBooksModule {
      * @return A copy of the Customer updated or created
      */
     public Customer updateCustomerFromSchool(@NonNull School school) {
-        boolean addNew = true;
         // Get customer associated with the school, if it exists
         Customer schoolCustomer = new Customer();
         List<Customer> customers = getAllCustomers();
         for (Customer c: customers) {
             if (c.getDisplayName().equals(school.getSchoolName())) {
-                schoolCustomer = c;
-                addNew = false;
+                schoolCustomer.setId(c.getId());
+                schoolCustomer.setSyncToken(c.getSyncToken());
                 break;
             }
         }
         // Convert the school object to a customer object
         Customer newCustomer = QuickBooksUtils.getCustomerFromSchool(school);
-        if (!addNew) {
+        if (schoolCustomer.getId() != null) {
             newCustomer.setId(schoolCustomer.getId());
             newCustomer.setSyncToken(schoolCustomer.getSyncToken());
         }
         // Add newCustomer or update the existing customer
         try {
-            if (addNew) {
+            if (schoolCustomer.getId() == null) {
                 dataService.add(newCustomer);
             } else {
+                newCustomer.setSparse(true);
                 dataService.update(newCustomer);
             }
         } catch (FMSException e) {
