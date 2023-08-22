@@ -48,7 +48,7 @@ public class QuickBooksUtils {
      * @param address an address model
      * @return a physicalAddress object which contains the values of the passed in address
      */
-    public static PhysicalAddress getPhysicalAddressFromAddress(Address address) {
+    private static PhysicalAddress getPhysicalAddressFromAddress(Address address) {
         PhysicalAddress physicalAddress = new PhysicalAddress();
         physicalAddress.setLine1(address.getLine1());
         physicalAddress.setLine2(address.getLine2());

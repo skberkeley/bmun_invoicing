@@ -5,6 +5,7 @@ import com.intuit.ipp.data.EmailAddress;
 import com.intuit.ipp.data.PhysicalAddress;
 import com.intuit.ipp.data.TelephoneNumber;
 import com.intuit.ipp.util.Config;
+import com.sun.xml.bind.v2.model.annotation.Quick;
 import invoice_automation.model.Address;
 import invoice_automation.model.School;
 import invoice_automation.utils.QuickBooksUtils;
@@ -13,6 +14,7 @@ import org.junit.runner.RunWith;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
+import java.lang.reflect.Method;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -32,7 +34,10 @@ public class QuickBooksUtilsTest {
                 .build();
     @Test
     public void getCustomerFromSchool_happyPath() {
-        // Setup
+        // Run
+        Customer customer = QuickBooksUtils.getCustomerFromSchool(school);
+
+        // Verify
         Customer expectedCustomer = new Customer();
         expectedCustomer.setCompanyName("Berkeley");
         expectedCustomer.setDisplayName("Berkeley");
@@ -51,17 +56,20 @@ public class QuickBooksUtilsTest {
         expectedCustomer.getPrimaryPhone().setFreeFormNumber(phoneNumbers.get(0));
         expectedCustomer.setAlternatePhone(new TelephoneNumber());
         expectedCustomer.getAlternatePhone().setFreeFormNumber(phoneNumbers.get(1));
-
-        // Run
-        Customer customer = QuickBooksUtils.getCustomerFromSchool(school);
-
-        // Verify
         assertEquals(expectedCustomer, customer);
     }
 
     @Test
-    public void getPhysicalAddressFromAddress_happyPath() {
+    public void getPhysicalAddressFromAddress_happyPath() throws Exception {
         // Setup
+        QuickBooksUtils quickBooksUtils = new QuickBooksUtils();
+        Method physicalAddressFromAddressMethod = QuickBooksUtils.class.getDeclaredMethod("getPhysicalAddressFromAddress", Address.class);
+        physicalAddressFromAddressMethod.setAccessible(true);
+
+        // Run
+        PhysicalAddress physicalAddress = (PhysicalAddress) physicalAddressFromAddressMethod.invoke(quickBooksUtils, address);
+
+        // Verify
         PhysicalAddress expectedPhysicalAddress = new PhysicalAddress();
         expectedPhysicalAddress.setLine1("110 Sproul Hall");
         expectedPhysicalAddress.setLine2("");
@@ -69,11 +77,6 @@ public class QuickBooksUtilsTest {
         expectedPhysicalAddress.setCountrySubDivisionCode("CA");
         expectedPhysicalAddress.setCountry("US");
         expectedPhysicalAddress.setPostalCode("94720");
-
-        // Run
-        PhysicalAddress physicalAddress = QuickBooksUtils.getPhysicalAddressFromAddress(address);
-
-        // Verify
         assertEquals(expectedPhysicalAddress, physicalAddress);
     }
 
