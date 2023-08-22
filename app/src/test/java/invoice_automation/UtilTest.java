@@ -27,20 +27,24 @@ import static org.mockito.Mockito.when;
 
 @RunWith(PowerMockRunner.class)
 public class UtilTest {
+    private static final String CUSTOMER_ID = "ID";
+    private static final String CUSTOMER_ID1 = "id";
+    private static final String SCHOOL_NAME = "Cal";
+
     @Mock
-    Invoice invoice;
+    private Invoice invoice;
     @Mock
-    Customer customer;
+    private Customer customer;
     @Mock
-    ReferenceType customerRef;
+    private ReferenceType customerRef;
     @Mock
-    Line line1;
+    private Line line1;
     @Mock
-    Line line2;
+    private Line line2;
     @Mock
-    SalesItemLineDetail salesItemLineDetail;
+    private SalesItemLineDetail salesItemLineDetail;
     @Mock
-    ReferenceType itemRef;
+    private ReferenceType itemRef;
 
     private final Address address = new Address(
             "",
@@ -51,7 +55,7 @@ public class UtilTest {
             ""
     );
     private final School school = School.builder()
-            .schoolName("Cal")
+            .schoolName(SCHOOL_NAME)
             .email("cal@cal.edu")
             .phoneNumbers(List.of())
             .address(address)
@@ -61,8 +65,6 @@ public class UtilTest {
             .numDelegates(0)
             .registrationDate(LocalDate.now())
             .paymentMethod(PaymentMethod.CARD);
-    private final String CUSTOMER_ID = "ID";
-    private final String CUSTOMER_ID1 = "id";
 
     @Test
     public void testCheckInvoiceMatchesCustomer_happyPath_invoiceAndCustomerMatch() {
@@ -150,5 +152,21 @@ public class UtilTest {
 
         // Do, Check
         assertNull(Util.getInvoiceTypeFromInvoice(invoice));
+    }
+
+    @Test
+    public void testGetCustomerRefFromCustomer_happyPath() {
+        // Setup
+        when(customer.getId()).thenReturn(CUSTOMER_ID);
+        when(customer.getDisplayName()).thenReturn(SCHOOL_NAME);
+
+        // Run
+        ReferenceType customerRef = Util.getCustomerRefFromCustomer(customer);
+
+        // Verify
+        ReferenceType expectedCustomerRef = new ReferenceType();
+        expectedCustomerRef.setValue(CUSTOMER_ID);
+        expectedCustomerRef.setName(SCHOOL_NAME);
+        assertEquals(expectedCustomerRef, customerRef);
     }
 }

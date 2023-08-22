@@ -61,4 +61,17 @@ public class Util {
         }
         return null;
     }
+
+    /**
+     * Construct a CustomerRef ReferenceType object from a given Customer object. The ReferenceType's value is the
+     * Customer's id, and its name is the Customer's display name.
+     * @param customer - The Customer object from which to construct a CustomerRef
+     * @return - The constructed CustomerRef
+     */
+    public static @NonNull ReferenceType getCustomerRefFromCustomer(@NonNull Customer customer) {
+        ReferenceType customerRef = new ReferenceType();
+        customerRef.setValue(customer.getId());
+        customerRef.setName(customer.getDisplayName());
+        return customerRef;
+    }
 }
