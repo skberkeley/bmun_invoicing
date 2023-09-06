@@ -13,7 +13,7 @@ import com.intuit.ipp.security.OAuth2Authorizer;
 import com.intuit.ipp.services.DataService;
 import com.intuit.ipp.util.Config;
 import invoice_automation.QuickBooksException;
-import invoice_automation.Util;
+import invoice_automation.utils.QuickBooksUtil;
 import invoice_automation.model.Conference;
 import invoice_automation.model.InvoiceType;
 import invoice_automation.model.ItemType;
@@ -21,13 +21,11 @@ import invoice_automation.model.PaymentMethod;
 import invoice_automation.model.Registration;
 import invoice_automation.model.RegistrationRound;
 import invoice_automation.model.School;
-import invoice_automation.utils.QuickBooksUtils;
 import lombok.Builder;
 import lombok.NonNull;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -108,7 +106,7 @@ public class QuickBooksModule {
             }
         }
         // Convert the school object to a customer object
-        Customer newCustomer = QuickBooksUtils.getCustomerFromSchool(school);
+        Customer newCustomer = QuickBooksUtil.getCustomerFromSchool(school);
         // Add newCustomer or update the existing customer
         if (customerId.equals("")) {
             try {
@@ -171,20 +169,20 @@ public class QuickBooksModule {
         List<Invoice> allInvoices = this.getAllInvoices();
 
         // If no invoices for the customer, return an empty map
-        if (allInvoices.stream().filter(i -> Util.checkInvoiceMatchesCustomer(i, customer)).findAny().isEmpty()) {
+        if (allInvoices.stream().filter(i -> QuickBooksUtil.checkInvoiceMatchesCustomer(i, customer)).findAny().isEmpty()) {
             return Map.of();
         }
 
         // Filter invoices for matching customer
         Stream<Invoice> matchingInvoices = allInvoices.stream()
-                .filter(i -> Util.checkInvoiceMatchesCustomer(i, customer));
+                .filter(i -> QuickBooksUtil.checkInvoiceMatchesCustomer(i, customer));
 
         // Filter for line items, construct map
         Map<InvoiceType, Invoice> invoiceMap = new HashMap<>();
         matchingInvoices.forEach(
                 i -> {
                     // Get invoice type
-                    InvoiceType invoiceType = Util.getInvoiceTypeFromInvoice(i);
+                    InvoiceType invoiceType = QuickBooksUtil.getInvoiceTypeFromInvoice(i);
                     // Add to map if not null
                     if (invoiceType != null) {
                         invoiceMap.put(invoiceType, i);
@@ -208,21 +206,21 @@ public class QuickBooksModule {
         // find matching customer
         Customer customer = this.getCustomerFromSchool(registration.getSchool());
         // construct customer ref
-        ReferenceType customerRef = Util.getCustomerRefFromCustomer(customer);
+        ReferenceType customerRef = QuickBooksUtil.getCustomerRefFromCustomer(customer);
 
         // get item objects relevant to this registration
         Map<ItemType, Item> itemMap = this.getRelevantItemsForRegistration(registration);
         // construct refs of these items
         Map<ItemType, ReferenceType> allItemRefMap = new HashMap<>();
         for (ItemType itemType: itemMap.keySet()) {
-            ReferenceType itemRef = Util.getItemRefFromItem(itemMap.get(itemType));
+            ReferenceType itemRef = QuickBooksUtil.getItemRefFromItem(itemMap.get(itemType));
             allItemRefMap.put(itemType, itemRef);
         }
 
         // call helper to determine registration round/due date
         LocalDate registrationDate = registration.getRegistrationDate();
         Conference conference = registration.getConference();
-        RegistrationRound registrationRound = Util.getRegistrationRound(registrationDate, conference);
+        RegistrationRound registrationRound = QuickBooksUtil.getRegistrationRound(registrationDate, conference);
         LocalDate schoolFeeDueDate = registrationRound.getSchoolFeeDueDate();
         LocalDate delegateFeeDueDate = registrationRound.getDelegateFeeDueDate();
         // call helper to calculate credit card processing fees
@@ -230,22 +228,22 @@ public class QuickBooksModule {
         BigDecimal delegateFeeCreditCardProcessingFee = BigDecimal.valueOf(0);
         boolean isPayingByCard = registration.getPaymentMethod() == PaymentMethod.CARD;
         if (isPayingByCard) {
-            schoolFeeCreditCardProcessingFee = Util.calculateCreditCardProcessingFee(registration, true);
+            schoolFeeCreditCardProcessingFee = QuickBooksUtil.calculateCreditCardProcessingFee(registration, true);
             delegateFeeCreditCardProcessingFee =
-                    Util.calculateCreditCardProcessingFee(registration, false);
+                    QuickBooksUtil.calculateCreditCardProcessingFee(registration, false);
         }
         // Construct school fee invoice
         PaymentMethod paymentMethod = registration.getPaymentMethod();
         Map<ItemType, BigDecimal> itemQuantityMap =
-                Util.constructItemQuantityMap(conference, paymentMethod, 0);
+                QuickBooksUtil.constructItemQuantityMap(conference, paymentMethod, 0);
         Map<ItemType, BigDecimal> itemRateMap =
-                Util.constructItemRateMap(conference, true, schoolFeeCreditCardProcessingFee);
+                QuickBooksUtil.constructItemRateMap(conference, true, schoolFeeCreditCardProcessingFee);
         Map<ItemType, ReferenceType> itemRefMap =
-                Util.constructItemRefMap(allItemRefMap, true, paymentMethod, conference);
-        Invoice schoolFeeInvoice = Util.constructInvoice(
+                QuickBooksUtil.constructItemRefMap(allItemRefMap, true, paymentMethod, conference);
+        Invoice schoolFeeInvoice = QuickBooksUtil.constructInvoice(
                 customerRef,
-                Util.getDate(registrationDate),
-                Util.getDate(schoolFeeDueDate),
+                QuickBooksUtil.getDate(registrationDate),
+                QuickBooksUtil.getDate(schoolFeeDueDate),
                 itemQuantityMap,
                 itemRateMap,
                 itemRefMap,
@@ -253,13 +251,13 @@ public class QuickBooksModule {
         );
 
         // Construct del fee invoice
-        itemQuantityMap = Util.constructItemQuantityMap(conference, paymentMethod, registration.getNumDelegates());
-        itemRateMap = Util.constructItemRateMap(conference, false, delegateFeeCreditCardProcessingFee);
-        itemRefMap = Util.constructItemRefMap(allItemRefMap, false, paymentMethod, conference);
-        Invoice delegateFeeInvoice = Util.constructInvoice(
+        itemQuantityMap = QuickBooksUtil.constructItemQuantityMap(conference, paymentMethod, registration.getNumDelegates());
+        itemRateMap = QuickBooksUtil.constructItemRateMap(conference, false, delegateFeeCreditCardProcessingFee);
+        itemRefMap = QuickBooksUtil.constructItemRefMap(allItemRefMap, false, paymentMethod, conference);
+        Invoice delegateFeeInvoice = QuickBooksUtil.constructInvoice(
                 customerRef,
-                Util.getDate(registrationDate),
-                Util.getDate(delegateFeeDueDate),
+                QuickBooksUtil.getDate(registrationDate),
+                QuickBooksUtil.getDate(delegateFeeDueDate),
                 itemQuantityMap,
                 itemRateMap,
                 itemRefMap,
