@@ -44,11 +44,11 @@ public class App {
                 .school(school)
                 .numDelegates(10)
                 .conference(Conference.FC)
-                .registrationDate(LocalDate.now())
+                .registrationDate(LocalDate.of(2023, 9, 4))
                 .paymentMethod(PaymentMethod.CARD)
                 .build();
 
-        Map<InvoiceType, Invoice> map = quickBooksModule.queryInvoicesFromRegistration(registration);
+        Map<InvoiceType, Invoice> map = quickBooksModule.createInvoicesFromRegistration(registration);
         System.out.println(map);
     }
 }
