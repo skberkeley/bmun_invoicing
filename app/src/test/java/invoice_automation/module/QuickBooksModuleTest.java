@@ -9,13 +9,15 @@ import com.intuit.ipp.data.Item;
 import com.intuit.ipp.data.Line;
 import com.intuit.ipp.data.LineDetailTypeEnum;
 import com.intuit.ipp.data.MemoRef;
+import com.intuit.ipp.data.PhysicalAddress;
 import com.intuit.ipp.data.ReferenceType;
 import com.intuit.ipp.data.SalesItemLineDetail;
+import com.intuit.ipp.data.TelephoneNumber;
 import com.intuit.ipp.exception.FMSException;
 import com.intuit.ipp.services.DataService;
 import com.intuit.ipp.util.Config;
 import invoice_automation.QuickBooksException;
-import invoice_automation.Util;
+import invoice_automation.utils.QuickBooksUtil;
 import invoice_automation.model.Address;
 import invoice_automation.model.Conference;
 import invoice_automation.model.InvoiceType;
@@ -49,7 +51,7 @@ import static org.mockito.Mockito.verify;
 import static org.powermock.api.mockito.PowerMockito.*;
 
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({QuickBooksModule.class, Config.class, Util.class})
+@PrepareForTest({QuickBooksModule.class, Config.class, QuickBooksUtil.class})
 public class QuickBooksModuleTest {
     private static final String ACCESS_TOKEN = "access token";
     private static final String REALM_ID = "realm id";
@@ -92,6 +94,7 @@ public class QuickBooksModuleTest {
             .paymentMethod(PaymentMethod.CARD)
             .conference(Conference.FC)
             .build();
+    private final List<String> phoneNumbers = List.of("1234567890", "0987654321");
 
     @Test
     public void testQuickBooksModuleConstructor_noSandbox_happyPath() {
@@ -236,6 +239,75 @@ public class QuickBooksModuleTest {
         assertNull(returnedInvoice);
     }
 
+    public void setupCustomer() {
+        customer = new Customer();
+        customer.setCompanyName("Berkeley");
+        customer.setDisplayName("Berkeley");
+        customer.setPrimaryEmailAddr(new EmailAddress());
+        customer.getPrimaryEmailAddr().setAddress("oski@berkeley.edu");
+        PhysicalAddress schoolAddress = new PhysicalAddress();
+        schoolAddress.setLine1("110 Sproul Hall");
+        schoolAddress.setLine2("");
+        schoolAddress.setCity("Berkeley");
+        schoolAddress.setCountrySubDivisionCode("CA");
+        schoolAddress.setCountry("US");
+        schoolAddress.setPostalCode("94720");
+        customer.setBillAddr(schoolAddress);
+        customer.setShipAddr(schoolAddress);
+        customer.setPrimaryPhone(new TelephoneNumber());
+        customer.getPrimaryPhone().setFreeFormNumber(phoneNumbers.get(0));
+        customer.setAlternatePhone(new TelephoneNumber());
+        customer.getAlternatePhone().setFreeFormNumber(phoneNumbers.get(1));
+    }
+
+    @Test
+    public void testUpdateCustomerFromSchool_addCustomer() throws Exception {
+        // Setup
+        setupMethodTests();
+        setupCustomer();
+
+        // Run
+        Customer returnedCustomer = quickBooksModule.updateCustomerFromSchool(school);
+
+        // Verify
+        assertEquals(customer, returnedCustomer);
+        verify(dataService).add(returnedCustomer);
+    }
+
+    @Test
+    public void testUpdateCustomerFromSchool_updateCustomer() throws Exception {
+        // Setup
+        setupMethodTests();
+        setupCustomer();
+        Customer initialCustomer = new Customer();
+        initialCustomer.setDisplayName("Berkeley");
+        initialCustomer.setSyncToken("12345");
+        initialCustomer.setId("12345");
+        when(dataService.findAll(any(Customer.class))).thenReturn(List.of(initialCustomer));
+
+        // Run
+        Customer returnedCustomer = quickBooksModule.updateCustomerFromSchool(school);
+
+        // Verify
+        customer.setSyncToken("12345");
+        customer.setId("12345");
+        customer.setSparse(true);
+        assertEquals(customer, returnedCustomer);
+        verify(dataService).update(returnedCustomer);
+    }
+
+    @Test(expected = QuickBooksException.class)
+    public void testUpdateCustomerFromSchool_dataServiceThrows() throws Exception {
+        // Setup
+        setupMethodTests();
+        // Mocking "add" as the test case will interact with a dataService with
+        // no existing customers and will add a new customer
+        when(dataService.add(any(Customer.class))).thenThrow((FMSException.class));
+
+        // Run
+        quickBooksModule.updateCustomerFromSchool(school);
+    }
+
     @Test
     public void testQueryInvoicesFromRegistration_happyPath() throws Exception {
         // Setup
@@ -252,11 +324,11 @@ public class QuickBooksModuleTest {
         randomInvoice.setId("random fee");
         when(dataService.findAll(any(Invoice.class)))
                 .thenReturn(List.of(schoolFeeInvoice, delFeeInvoice, randomInvoice));
-        mockStatic(Util.class);
-        when(Util.checkInvoiceMatchesCustomer(any(Invoice.class), eq(customer))).thenReturn(true);
-        when(Util.getInvoiceTypeFromInvoice(schoolFeeInvoice)).thenReturn(InvoiceType.BMUN_SCHOOL_FEE);
-        when(Util.getInvoiceTypeFromInvoice(delFeeInvoice)).thenReturn(InvoiceType.BMUN_DELEGATE_FEE);
-        when(Util.getInvoiceTypeFromInvoice(randomInvoice)).thenReturn(null);
+        mockStatic(QuickBooksUtil.class);
+        when(QuickBooksUtil.checkInvoiceMatchesCustomer(any(Invoice.class), eq(customer))).thenReturn(true);
+        when(QuickBooksUtil.getInvoiceTypeFromInvoice(schoolFeeInvoice)).thenReturn(InvoiceType.BMUN_SCHOOL_FEE);
+        when(QuickBooksUtil.getInvoiceTypeFromInvoice(delFeeInvoice)).thenReturn(InvoiceType.BMUN_DELEGATE_FEE);
+        when(QuickBooksUtil.getInvoiceTypeFromInvoice(randomInvoice)).thenReturn(null);
 
         // Do
         Map<InvoiceType, Invoice> invoiceMap = quickBooksModule.queryInvoicesFromRegistration(registration);
@@ -299,8 +371,8 @@ public class QuickBooksModuleTest {
         randomInvoice.setId("random fee");
         when(dataService.findAll(any(Invoice.class)))
                 .thenReturn(List.of(schoolFeeInvoice, delFeeInvoice, randomInvoice));
-        mockStatic(Util.class);
-        when(Util.checkInvoiceMatchesCustomer(any(Invoice.class), eq(customer))).thenReturn(false);
+        mockStatic(QuickBooksUtil.class);
+        when(QuickBooksUtil.checkInvoiceMatchesCustomer(any(Invoice.class), eq(customer))).thenReturn(false);
 
         // Do
         Map<InvoiceType, Invoice> invoiceMap = quickBooksModule.queryInvoicesFromRegistration(registration);
