@@ -21,11 +21,5 @@ public enum Conference {
         public String toString() {
             return String.format("FC %d", Consts.FC_NO);
         }
-    },
-    TEST {
-        @Override
-        public String toString() {
-            return "Test";
-        }
-    };
+    }
 }

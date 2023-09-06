@@ -9,4 +9,5 @@ public class Consts {
     public static final String SANDBOX_BASE_URL = "https://sandbox-quickbooks.api.intuit.com/v3/company";
     public static final String SCHOOL_FEE = "School Fee";
     public static final String DELEGATE_FEE = "Delegate Fee";
+    public static final String CREDIT_CARD_PROCESSING_FEE = "Credit Card Processing Fee";
 }

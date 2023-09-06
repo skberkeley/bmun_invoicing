@@ -1,39 +1,36 @@
 package invoice_automation.model;
 
 import invoice_automation.Consts;
-import lombok.Getter;
 
-import java.math.BigDecimal;
-
-public enum InvoiceType {
-    BMUN_SCHOOL_FEE(BigDecimal.valueOf(60)) {
+public enum ItemType {
+    BMUN_SCHOOL_FEE {
         @Override
         public String toString() {
             return String.format("%s %s", Conference.BMUN, Consts.SCHOOL_FEE);
         }
     },
-    BMUN_DELEGATE_FEE(BigDecimal.valueOf(85)) {
+    BMUN_DELEGATE_FEE {
         @Override
         public String toString() {
             return String.format("%s %s", Conference.BMUN, Consts.DELEGATE_FEE);
         }
     },
-    FC_SCHOOL_FEE(BigDecimal.valueOf(35)) {
+    FC_SCHOOL_FEE {
         @Override
         public String toString() {
             return String.format("%s %s", Conference.FC, Consts.SCHOOL_FEE);
         }
     },
-    FC_DELEGATE_FEE(BigDecimal.valueOf(30)) {
+    FC_DELEGATE_FEE {
         @Override
         public String toString() {
             return String.format("%s %s", Conference.FC, Consts.DELEGATE_FEE);
         }
-    };
-
-    @Getter
-    private final BigDecimal unitCost;
-    InvoiceType(BigDecimal unitCost) {
-        this.unitCost = unitCost;
+    },
+    CREDIT_CARD_PROCESSING_FEE {
+        @Override
+        public String toString() {
+            return Consts.CREDIT_CARD_PROCESSING_FEE;
+        }
     }
 }

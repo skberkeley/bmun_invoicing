@@ -5,19 +5,28 @@ import com.intuit.ipp.core.ServiceType;
 import com.intuit.ipp.data.Customer;
 import com.intuit.ipp.data.EmailStatusEnum;
 import com.intuit.ipp.data.Invoice;
+import com.intuit.ipp.data.Item;
 import com.intuit.ipp.data.MemoRef;
+import com.intuit.ipp.data.ReferenceType;
 import com.intuit.ipp.exception.FMSException;
 import com.intuit.ipp.security.OAuth2Authorizer;
 import com.intuit.ipp.services.DataService;
 import com.intuit.ipp.util.Config;
 import invoice_automation.QuickBooksException;
 import invoice_automation.Util;
+import invoice_automation.model.Conference;
 import invoice_automation.model.InvoiceType;
+import invoice_automation.model.ItemType;
+import invoice_automation.model.PaymentMethod;
 import invoice_automation.model.Registration;
+import invoice_automation.model.RegistrationRound;
 import invoice_automation.model.School;
 import lombok.Builder;
 import lombok.NonNull;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -156,6 +165,113 @@ public class QuickBooksModule {
     }
 
     /**
+     * Creates the invoices relevant to the passed Registration, saving them in QuickBooks. Assumes invoices pertaining
+     * to the registration do not yet exist. Should create one invoice for the relevant conference's school fee, and
+     * another for delegate fees. The registration round should be inferred from the Registration's registration date,
+     * and the due dates of the invoices should match this registration round. In addition, the customer attached to the
+     * invoices should match the Registration's School, and numDelegates should equal the quantity on the delegate fee
+     * invoice. If the PaymentMethod is CARD, a credit card processing fee item should also be added.
+     * @param registration - The registration from which to create the invoices
+     * @return - A map from InvoiceType to the created invoices
+     */
+    public Map<InvoiceType, Invoice> createInvoicesFromRegistration(@NonNull Registration registration) {
+        // find matching customer
+        Customer customer = this.getCustomerFromSchool(registration.getSchool());
+        // construct customer ref
+        ReferenceType customerRef = Util.getCustomerRefFromCustomer(customer);
+
+        // get item objects relevant to this registration
+        Map<ItemType, Item> itemMap = this.getRelevantItemsForRegistration(registration);
+        // construct refs of these items
+        Map<ItemType, ReferenceType> allItemRefMap = new HashMap<>();
+        for (ItemType itemType: itemMap.keySet()) {
+            ReferenceType itemRef = Util.getItemRefFromItem(itemMap.get(itemType));
+            allItemRefMap.put(itemType, itemRef);
+        }
+
+        // call helper to determine registration round/due date
+        LocalDate registrationDate = registration.getRegistrationDate();
+        Conference conference = registration.getConference();
+        RegistrationRound registrationRound = Util.getRegistrationRound(registrationDate, conference);
+        LocalDate schoolFeeDueDate = registrationRound.getSchoolFeeDueDate();
+        LocalDate delegateFeeDueDate = registrationRound.getDelegateFeeDueDate();
+        // call helper to calculate credit card processing fees
+        BigDecimal schoolFeeCreditCardProcessingFee = BigDecimal.valueOf(0);
+        BigDecimal delegateFeeCreditCardProcessingFee = BigDecimal.valueOf(0);
+        boolean isPayingByCard = registration.getPaymentMethod() == PaymentMethod.CARD;
+        if (isPayingByCard) {
+            schoolFeeCreditCardProcessingFee = Util.calculateCreditCardProcessingFee(registration, true);
+            delegateFeeCreditCardProcessingFee =
+                    Util.calculateCreditCardProcessingFee(registration, false);
+        }
+        // Construct school fee invoice
+        PaymentMethod paymentMethod = registration.getPaymentMethod();
+        Map<ItemType, BigDecimal> itemQuantityMap =
+                Util.constructItemQuantityMap(conference, paymentMethod, 0);
+        Map<ItemType, BigDecimal> itemRateMap =
+                Util.constructItemRateMap(conference, true, schoolFeeCreditCardProcessingFee);
+        Map<ItemType, ReferenceType> itemRefMap =
+                Util.constructItemRefMap(allItemRefMap, true, paymentMethod, conference);
+        Invoice schoolFeeInvoice = Util.constructInvoice(
+                customerRef,
+                Util.getDate(registrationDate),
+                Util.getDate(schoolFeeDueDate),
+                itemQuantityMap,
+                itemRateMap,
+                itemRefMap,
+                registration.getPaymentMethod()
+        );
+
+        // Construct del fee invoice
+        itemQuantityMap = Util.constructItemQuantityMap(conference, paymentMethod, registration.getNumDelegates());
+        itemRateMap = Util.constructItemRateMap(conference, false, delegateFeeCreditCardProcessingFee);
+        itemRefMap = Util.constructItemRefMap(allItemRefMap, false, paymentMethod, conference);
+        Invoice delegateFeeInvoice = Util.constructInvoice(
+                customerRef,
+                Util.getDate(registrationDate),
+                Util.getDate(delegateFeeDueDate),
+                itemQuantityMap,
+                itemRateMap,
+                itemRefMap,
+                registration.getPaymentMethod()
+        );
+
+
+        // add the invoices via the quickbooks api
+        try {
+            dataService.add(schoolFeeInvoice);
+        } catch (FMSException e) {
+            throw new QuickBooksException("Error creating a new school fee invoice", e);
+        }
+
+        try {
+            dataService.add(delegateFeeInvoice);
+        } catch (FMSException e) {
+            throw new QuickBooksException("Error creating a new delegate fee invoice", e);
+        }
+
+        Map<InvoiceType, Invoice> invoiceMap;
+
+        if (conference == Conference.BMUN) {
+            invoiceMap = Map.of(
+                    InvoiceType.BMUN_SCHOOL_FEE,
+                    schoolFeeInvoice,
+                    InvoiceType.BMUN_DELEGATE_FEE,
+                    delegateFeeInvoice
+            );
+        } else {
+            invoiceMap = Map.of(
+                InvoiceType.FC_SCHOOL_FEE,
+                schoolFeeInvoice,
+                InvoiceType.FC_DELEGATE_FEE,
+                delegateFeeInvoice
+            );
+        }
+
+        return invoiceMap;
+    }
+
+    /**
      * Sends the passed invoice, using the email of the associated Customer.
      * @param invoice The Invoice to send
      */
@@ -198,5 +314,68 @@ public class QuickBooksModule {
         }
 
         return invoices;
+    }
+
+    // Item methods
+
+    /**
+     * Queries for all items by calling dataService.findall
+     * @return - A list of all existing items
+     */
+    private List<Item> getAllItems() {
+        List<Item> items;
+        try {
+            items = this.dataService.findAll(new Item());
+        } catch (FMSException e) {
+            throw new QuickBooksException("Error fetching all invoices", e);
+        }
+
+        return items;
+    }
+
+    /**
+     * Fetches the relevant QuickBooks Items that would appear in the invoices for the passed Registration. These Items
+     * would be the relevant school fee and delegate fee items, and if paying by card the credit card processing item
+     * too.
+     * @param registration - The Registration for which to get relevant items
+     * @return - A map from ItemType to the relevant Items
+     */
+    private Map<ItemType, Item> getRelevantItemsForRegistration(@NonNull Registration registration) {
+        Map<ItemType, Item> itemMap = new HashMap<>();
+
+        List<Item> allItems = this.getAllItems();
+
+        if (registration.getConference() == Conference.BMUN) {
+            Item schoolFeeItem = allItems.stream()
+                    .filter(item -> item.getName().equals(ItemType.BMUN_SCHOOL_FEE.toString()))
+                    .findAny().orElseThrow(() -> new QuickBooksException("Couldn't find BMUN School Fee Item", null));
+            Item delegateFeeItem = allItems.stream()
+                    .filter(item -> item.getName().equals(ItemType.BMUN_DELEGATE_FEE.toString()))
+                    .findAny().orElseThrow(() -> new QuickBooksException("Couldn't find BMUN Delegate Fee Item", null));
+
+            itemMap.put(ItemType.BMUN_SCHOOL_FEE, schoolFeeItem);
+            itemMap.put(ItemType.BMUN_DELEGATE_FEE, delegateFeeItem);
+        } else if (registration.getConference() == Conference.FC) {
+            Item schoolFeeItem = allItems.stream()
+                    .filter(item -> item.getName().equals(ItemType.FC_SCHOOL_FEE.toString()))
+                    .findAny().orElseThrow(() -> new QuickBooksException("Couldn't find FC School Fee Item", null));
+            Item delegateFeeItem = allItems.stream()
+                    .filter(item -> item.getName().equals(ItemType.FC_DELEGATE_FEE.toString()))
+                    .findAny().orElseThrow(() -> new QuickBooksException("Couldn't find FC Delegate Fee Item", null));
+
+            itemMap.put(ItemType.FC_SCHOOL_FEE, schoolFeeItem);
+            itemMap.put(ItemType.FC_DELEGATE_FEE, delegateFeeItem);
+        }
+
+        if (registration.getPaymentMethod() == PaymentMethod.CARD) {
+            Item creditCardFeeItem = allItems.stream()
+                    .filter(item -> item.getName().equals(ItemType.CREDIT_CARD_PROCESSING_FEE.toString()))
+                    .findAny()
+                    .orElseThrow(() -> new QuickBooksException("Couldn't find Credit Card Processing Fee Item", null));
+
+            itemMap.put(ItemType.CREDIT_CARD_PROCESSING_FEE, creditCardFeeItem);
+        }
+
+        return itemMap;
     }
 }
