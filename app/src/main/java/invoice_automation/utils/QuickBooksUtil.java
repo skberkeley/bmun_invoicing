@@ -1,19 +1,24 @@
-package invoice_automation;
+package invoice_automation.utils;
 
 import com.intuit.ipp.data.Customer;
+import com.intuit.ipp.data.EmailAddress;
 import com.intuit.ipp.data.Invoice;
 import com.intuit.ipp.data.Item;
 import com.intuit.ipp.data.ItemLineDetail;
 import com.intuit.ipp.data.Line;
 import com.intuit.ipp.data.LineDetailTypeEnum;
+import com.intuit.ipp.data.PhysicalAddress;
 import com.intuit.ipp.data.ReferenceType;
 import com.intuit.ipp.data.SalesItemLineDetail;
+import com.intuit.ipp.data.TelephoneNumber;
+import invoice_automation.model.Address;
 import invoice_automation.model.Conference;
 import invoice_automation.model.InvoiceType;
 import invoice_automation.model.ItemType;
 import invoice_automation.model.PaymentMethod;
 import invoice_automation.model.Registration;
 import invoice_automation.model.RegistrationRound;
+import invoice_automation.model.School;
 import lombok.NonNull;
 
 import java.math.BigDecimal;
@@ -26,7 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class Util {
+public class QuickBooksUtil {
     /**
      * Utility method to check that an Invoice corresponds to the passed Customer. If the Invoice has no CustomerRef,
      * returns false, else checks that the Customer Ref's value matches the Customer's id.
@@ -58,7 +63,7 @@ public class Util {
                 .map(Line::getSalesItemLineDetail)
                 .map(ItemLineDetail::getItemRef)
                 .map(ReferenceType::getName)
-                .map(Util::getInvoiceTypeFromLineItemName)
+                .map(QuickBooksUtil::getInvoiceTypeFromLineItemName)
                 .filter(Objects::nonNull)
                 .findAny().orElse(null);
     }
@@ -348,5 +353,49 @@ public class Util {
      */
     public static Date getDate(LocalDate localDate) {
         return java.sql.Date.valueOf(localDate);
+    }
+
+    /**
+     * Derives a new customer object from a school object
+     * @param school the school object whose values are used in the creation of a new customer
+     * @return a new customer created from the school
+     * */
+    public static Customer getCustomerFromSchool(School school) {
+        Customer newCustomer = new Customer();
+        newCustomer.setCompanyName(school.getSchoolName());
+        newCustomer.setDisplayName(school.getSchoolName());
+        newCustomer.setPrimaryEmailAddr(new EmailAddress());
+        newCustomer.getPrimaryEmailAddr().setAddress(school.getEmail());
+        PhysicalAddress schoolAddress = getPhysicalAddressFromAddress(school.getAddress());
+        newCustomer.setBillAddr(schoolAddress);
+        newCustomer.setShipAddr(schoolAddress);
+        List<String> phoneNumbers = school.getPhoneNumbers();
+        if (!phoneNumbers.isEmpty()) {
+            if (school.getPhoneNumbers().size() > 0) {
+                newCustomer.setPrimaryPhone(new TelephoneNumber());
+                newCustomer.getPrimaryPhone().setFreeFormNumber(phoneNumbers.get(0));
+            }
+            if (school.getPhoneNumbers().size() > 1) {
+                newCustomer.setAlternatePhone(new TelephoneNumber());
+                newCustomer.getAlternatePhone().setFreeFormNumber(phoneNumbers.get(1));
+            }
+        }
+        return newCustomer;
+    }
+
+    /**
+     * Creates a physical address object from an address object
+     * @param address an address model
+     * @return a physicalAddress object which contains the values of the passed in address
+     */
+    private static PhysicalAddress getPhysicalAddressFromAddress(Address address) {
+        PhysicalAddress physicalAddress = new PhysicalAddress();
+        physicalAddress.setLine1(address.getLine1());
+        physicalAddress.setLine2(address.getLine2());
+        physicalAddress.setCity(address.getCity());
+        physicalAddress.setCountrySubDivisionCode(address.getCountrySubdivisionCode());
+        physicalAddress.setCountry(address.getCountry());
+        physicalAddress.setPostalCode(address.getZipCode());
+        return physicalAddress;
     }
 }
