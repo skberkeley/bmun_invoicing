@@ -174,7 +174,7 @@ public class QuickBooksModuleTest {
         when(billEmail.getAddress()).thenReturn(EMAIL_ADDRESS);
 
         // Run
-        quickBooksModule.sendInvoice(invoice);
+        quickBooksModule.sendInvoice(invoice, "");
 
         // Verify
         Mockito.verify(dataService).sendEmail(invoice, EMAIL_ADDRESS);
@@ -190,7 +190,7 @@ public class QuickBooksModuleTest {
         when(dataService.sendEmail(any(), any())).thenThrow(FMSException.class);
 
         // Run
-        quickBooksModule.sendInvoice(invoice);
+        quickBooksModule.sendInvoice(invoice, "");
     }
 
     @Test

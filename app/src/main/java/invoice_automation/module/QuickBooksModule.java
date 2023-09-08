@@ -267,13 +267,13 @@ public class QuickBooksModule {
 
         // add the invoices via the quickbooks api
         try {
-            dataService.add(schoolFeeInvoice);
+            schoolFeeInvoice = dataService.add(schoolFeeInvoice);
         } catch (FMSException e) {
             throw new QuickBooksException("Error creating a new school fee invoice", e);
         }
 
         try {
-            dataService.add(delegateFeeInvoice);
+            delegateFeeInvoice = dataService.add(delegateFeeInvoice);
         } catch (FMSException e) {
             throw new QuickBooksException("Error creating a new delegate fee invoice", e);
         }
@@ -301,11 +301,14 @@ public class QuickBooksModule {
 
     /**
      * Sends the passed invoice, using the email of the associated Customer.
-     * @param invoice The Invoice to send
+     *
+     * @param invoice      The Invoice to send
+     * @param emailAddress The email to send the invoice to, if the invoice doesn't have an associated billing email
      */
-    public void sendInvoice(@NonNull Invoice invoice) {
+    public void sendInvoice(@NonNull Invoice invoice, @NonNull String emailAddress) {
+        String email = invoice.getBillEmail() == null ? emailAddress : invoice.getBillEmail().getAddress();
         try {
-            this.dataService.sendEmail(invoice, invoice.getBillEmail().getAddress());
+            this.dataService.sendEmail(invoice, email);
         } catch (FMSException e) {
             throw new QuickBooksException("Exception sending invoice", e);
         }

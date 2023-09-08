@@ -4,10 +4,9 @@
 package invoice_automation;
 
 import com.google.gson.Gson;
-import com.intuit.ipp.data.Invoice;
+import invoice_automation.handler.RegistrationHandler;
 import invoice_automation.model.Address;
 import invoice_automation.model.Conference;
-import invoice_automation.model.InvoiceType;
 import invoice_automation.model.PaymentMethod;
 import invoice_automation.model.Registration;
 import invoice_automation.model.School;
@@ -17,7 +16,6 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
 public class App {
     private static final String O_AUTH_KEYS_PATH = "app/src/main/resources/oauth_keys.json";
@@ -25,17 +23,12 @@ public class App {
     public static void main(String[] args) throws FileNotFoundException {
         Gson gson = new Gson();
         OAuthKeys oAuthKeys = gson.fromJson(new FileReader(O_AUTH_KEYS_PATH), OAuthKeys.class);
-        QuickBooksModule quickBooksModule = new QuickBooksModule(
-                oAuthKeys.getAccessToken(),
-                oAuthKeys.getRealmId(),
-                true
-        );
 
         Address address = new Address("", "", "", "", "", "");
 
         School school = School.builder()
                 .schoolName("BMUN")
-                .email("")
+                .email("treasurer@bmun.org")
                 .phoneNumbers(List.of())
                 .address(address)
                 .build();
@@ -48,7 +41,7 @@ public class App {
                 .paymentMethod(PaymentMethod.CARD)
                 .build();
 
-        Map<InvoiceType, Invoice> map = quickBooksModule.createInvoicesFromRegistration(registration);
-        System.out.println(map);
+        RegistrationHandler handler = new RegistrationHandler(oAuthKeys.getAccessToken(), oAuthKeys.getRealmId(), true);
+        handler.handleRegistration(registration);
     }
 }
