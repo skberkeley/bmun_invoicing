@@ -10,17 +10,20 @@ import invoice_automation.model.Conference;
 import invoice_automation.model.PaymentMethod;
 import invoice_automation.model.Registration;
 import invoice_automation.model.School;
+import invoice_automation.module.GoogleSheetsModule;
 import invoice_automation.module.QuickBooksModule;
 
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.time.LocalDate;
 import java.util.List;
 
 public class App {
     private static final String O_AUTH_KEYS_PATH = "app/src/main/resources/oauth_keys.json";
 
-    public static void main(String[] args) throws FileNotFoundException {
+    public static void main(String[] args) throws IOException, GeneralSecurityException {
         Gson gson = new Gson();
         OAuthKeys oAuthKeys = gson.fromJson(new FileReader(O_AUTH_KEYS_PATH), OAuthKeys.class);
 
@@ -41,7 +44,13 @@ public class App {
                 .paymentMethod(PaymentMethod.CARD)
                 .build();
 
-        RegistrationHandler handler = new RegistrationHandler(oAuthKeys.getAccessToken(), oAuthKeys.getRealmId(), true);
-        handler.handleRegistration(registration);
+        List<Registration> registrations = GoogleSheetsModule.parseRegistrationsFromGoogleSheet(
+                "1TU1ADMbf0wXmHjcpjnGfKVJqHvgEATlGKS0dHsJfenI",
+                Conference.FC
+        );
+        System.out.println(registrations);
+
+        //RegistrationHandler handler = new RegistrationHandler(oAuthKeys.getAccessToken(), oAuthKeys.getRealmId(), true);
+        //handler.handleRegistration(registration);
     }
 }
