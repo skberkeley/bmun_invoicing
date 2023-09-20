@@ -9,8 +9,10 @@ import com.intuit.ipp.data.Item;
 import com.intuit.ipp.data.MemoRef;
 import com.intuit.ipp.data.ReferenceType;
 import com.intuit.ipp.exception.FMSException;
+import com.intuit.ipp.query.GenerateQuery;
 import com.intuit.ipp.security.OAuth2Authorizer;
 import com.intuit.ipp.services.DataService;
+import com.intuit.ipp.services.QueryResult;
 import com.intuit.ipp.util.Config;
 import invoice_automation.QuickBooksException;
 import invoice_automation.utils.QuickBooksUtil;
@@ -75,17 +77,40 @@ public class QuickBooksModule {
 
     // Customer methods
 
+
+    /**
+     * Gets the corresponding QuickBooks Customer, by matching the school name and the Customer's display name. If no
+     * matching Customer exists, returns null.
+     * @param school - The school to match against using the school's name
+     * @return - The matching Customer object
+     */
+    private Customer queryCustomerFromSchool(@NonNull School school) {
+        String query = QueryModule.getQueryForCustomerFromSchool(school.getSchoolName());
+        QueryResult queryResult;
+        try {
+            queryResult = this.dataService.executeQuery(query);
+        } catch (FMSException e) {
+            throw new QuickBooksException("Exception getting customer", e);
+        }
+        if (queryResult == null || queryResult.getEntities().isEmpty()) {
+            return null;
+        }
+        return (Customer) queryResult.getEntities().get(0);
+    }
+
     /**
      * Get a list of all existing customers through the QuickBooks API
      * @return A list of all existing customers
      */
     public List<Customer> getAllCustomers() {
-        Customer customer = new Customer();
+        String query = "SELECT * FROM customer";
+        QueryResult queryResult;
         try {
-            return this.dataService.findAll(customer);
+            queryResult = this.dataService.executeQuery(query);
         } catch (FMSException e) {
             throw new QuickBooksException("Exception getting all customers", e);
         }
+        return (List<Customer>) queryResult.getEntities();
     }
 
     /**
@@ -94,21 +119,10 @@ public class QuickBooksModule {
      * @return A copy of the Customer updated or created
      */
     public Customer updateCustomerFromSchool(@NonNull School school) {
-        // Get customer associated with the school, if it exists
-        String customerId = "";
-        String customerSyncToken = "";
-        List<Customer> customers = getAllCustomers();
-        for (Customer c: customers) {
-            if (c.getDisplayName().equals(school.getSchoolName())) {
-                customerId = c.getId();
-                customerSyncToken = c.getSyncToken();
-                break;
-            }
-        }
-        // Convert the school object to a customer object
+        Customer queriedCustomer = this.queryCustomerFromSchool(school);
         Customer newCustomer = QuickBooksUtil.getCustomerFromSchool(school);
         // Add newCustomer or update the existing customer
-        if (customerId.equals("")) {
+        if (queriedCustomer == null) {
             try {
                 dataService.add(newCustomer);
             } catch (FMSException e) {
@@ -116,8 +130,8 @@ public class QuickBooksModule {
             }
         } else {
             try {
-                newCustomer.setId(customerId);
-                newCustomer.setSyncToken(customerSyncToken);
+                newCustomer.setId(queriedCustomer.getId());
+                newCustomer.setSyncToken(queriedCustomer.getSyncToken());
                 newCustomer.setSparse(true);
                 dataService.update(newCustomer);
             } catch (FMSException e) {
@@ -125,25 +139,6 @@ public class QuickBooksModule {
             }
         }
         return newCustomer;
-    }
-
-    /**
-     * Gets the corresponding QuickBooks Customer, by matching the school name and the Customer's display name. If no
-     * matching Customer exists, returns null.
-     * @param school - The school to match against using the school's name
-     * @return - The matching Customer object
-     */
-    private Customer getCustomerFromSchool(@NonNull School school) {
-        return this.getAllCustomers().stream()
-                .filter(
-                        c -> {
-                            if (c.getDisplayName() == null) {
-                                return false;
-                            }
-                            return c.getDisplayName().equals(school.getSchoolName());
-                        }
-                )
-                .findFirst().orElse(null);
     }
 
     // Invoice methods
@@ -159,7 +154,7 @@ public class QuickBooksModule {
      */
     public Map<InvoiceType, Invoice> queryInvoicesFromRegistration(@NonNull Registration registration) {
         // Get Customer to match against
-        Customer customer = this.getCustomerFromSchool(registration.getSchool());
+        Customer customer = this.queryCustomerFromSchool(registration.getSchool());
         if (customer == null) {
             // If no matching customer exists, then no matching invoices exist
             return Map.of();
@@ -204,7 +199,7 @@ public class QuickBooksModule {
      */
     public Map<InvoiceType, Invoice> createInvoicesFromRegistration(@NonNull Registration registration) {
         // find matching customer
-        Customer customer = this.getCustomerFromSchool(registration.getSchool());
+        Customer customer = this.queryCustomerFromSchool(registration.getSchool());
         // construct customer ref
         ReferenceType customerRef = QuickBooksUtil.getCustomerRefFromCustomer(customer);
 
