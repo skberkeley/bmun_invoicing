@@ -74,11 +74,12 @@ public class GoogleSheetsModule {
      */
     public static List<Registration> parseRegistrationsFromGoogleSheet(
             @NonNull String spreadsheetId,
+            @NonNull String sheetName,
             @NonNull Conference conference
     ) throws GeneralSecurityException, IOException {
         // Build a new authorized API client service.
         final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
-        final String range = "TestRegistrations!A2:M";
+        final String range = sheetName + "!A2:M";
         Sheets service = new Sheets.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(HTTP_TRANSPORT))
                 .setApplicationName("Invoicing")
                 .build();
@@ -106,18 +107,18 @@ public class GoogleSheetsModule {
             return null;
         }
 
-        String schoolName = (String) row.get(0);
-        String email = (String) row.get(1);
-        String phoneNumber = (String) row.get(2);
-        String addressLine1 = (String) row.get(3);
-        String addressLine2 = (String) row.get(4);
-        String city = (String) row.get(5);
-        String state = (String) row.get(6);
-        String country = (String) row.get(7);
-        String zipCode = (String) row.get(8);
-        String numDelegates = (String) row.get(9);
-        String registrationDate = (String) row.get(10);
-        String paymentMethod = (String) row.get(11);
+        String schoolName = ((String) row.get(0)).strip();
+        String email = ((String) row.get(1)).strip();
+        String phoneNumber = ((String) row.get(2)).strip();
+        String addressLine1 = ((String) row.get(3)).strip();
+        String addressLine2 = ((String) row.get(4)).strip();
+        String city = ((String) row.get(5)).strip();
+        String state = ((String) row.get(6)).strip();
+        String country = ((String) row.get(7)).strip();
+        String zipCode = ((String) row.get(8)).strip();
+        String numDelegates = ((String) row.get(9)).strip();
+        String registrationDate = ((String) row.get(10)).strip();
+        String paymentMethod = ((String) row.get(11)).strip();
 
         Address address = new Address(addressLine1, addressLine2, city, state, country, zipCode);
         School school = School.builder()

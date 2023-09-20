@@ -11,6 +11,7 @@ import invoice_automation.model.PaymentMethod;
 import invoice_automation.model.Registration;
 import invoice_automation.model.School;
 import invoice_automation.module.GoogleSheetsModule;
+import invoice_automation.module.QueryModule;
 import invoice_automation.module.QuickBooksModule;
 
 import java.io.FileNotFoundException;
@@ -21,7 +22,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 public class App {
-    private static final String O_AUTH_KEYS_PATH = "app/src/main/resources/oauth_keys.json";
+    private static final String O_AUTH_KEYS_PATH = "app/src/main/resources/intuit_oauth_keys.json";
 
     public static void main(String[] args) throws IOException, GeneralSecurityException {
         Gson gson = new Gson();
@@ -43,12 +44,7 @@ public class App {
                 .registrationDate(LocalDate.of(2023, 9, 4))
                 .paymentMethod(PaymentMethod.CARD)
                 .build();
-
-        List<Registration> registrations = GoogleSheetsModule.parseRegistrationsFromGoogleSheet(
-                "1TU1ADMbf0wXmHjcpjnGfKVJqHvgEATlGKS0dHsJfenI",
-                Conference.FC
-        );
-        System.out.println(registrations);
+        System.out.println(QueryModule.getQueryForCustomerFromSchool("BMUN"));
 
         //RegistrationHandler handler = new RegistrationHandler(oAuthKeys.getAccessToken(), oAuthKeys.getRealmId(), true);
         //handler.handleRegistration(registration);
